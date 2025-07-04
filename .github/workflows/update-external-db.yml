@@ -1,0 +1,54 @@
+name: Update BrowsCap CSV
+
+on:
+  schedule:
+    - cron: '0 2 * * *' 
+  workflow_dispatch:
+
+env:
+  BROWSCAP_CSV_URL: https://browscap.org/stream?q=BrowsCapCSV  # << CSV URL
+  BROWSCAP_CSV_FILE: testdata/browscap.csv
+  BROWSCAP_VERSION_FILE: .browscap_version
+
+jobs:
+  update-browscap:
+    name: Download updated CSV and commit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check current and remote version
+        id: browscap
+        run: |
+          REMOTE_VERSION=$(curl -s https://browscap.org/version-number)
+          LOCAL_VERSION=$(cat "$BROWSCAP_VERSION_FILE" 2>/dev/null || echo "0")
+
+          if [ "$REMOTE_VERSION" -gt "$LOCAL_VERSION" ]; then
+            echo "New version available: $REMOTE_VERSION"
+            echo "update=true" >> "$GITHUB_OUTPUT"
+            echo "remote_version=$REMOTE_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "Already up-to-date"
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download CSV
+        if: steps.browscap.outputs.update == 'true'
+        run: |
+          curl -s -L -o "$BROWSCAP_CSV_FILE" "$BROWSCAP_CSV_URL"
+          echo "${{ steps.browscap.outputs.remote_version }}" > "$BROWSCAP_VERSION_FILE"
+
+      - name: Create Pull Request
+        if: steps.browscap.outputs.update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: update-db/browscap
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Update BrowsCap CSV to version ${{ steps.browscap.outputs.remote_version }}"
+          title: Update BrowsCap CSV to version ${{ steps.browscap.outputs.remote_version }}
+          body: |
+            - Updated to BrowsCap CSV version: ${{ steps.browscap.outputs.remote_version }}
+            - Automatically triggered by scheduled workflow.
+          reviewers: escabora
+          delete-branch: true
