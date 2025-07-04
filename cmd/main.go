@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"parser-ua/internal/parser"
+
+	"github.com/escabora/parser-ua/internal/parser"
 )
 
 func main() {
