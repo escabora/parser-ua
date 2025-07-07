@@ -33,6 +33,11 @@ jobs:
             echo "update=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Enable Git-LFS
+        if: steps.browscap.outputs.update == 'true'
+        run: |
+          git lfs install
+
       - name: Download CSV
         if: steps.browscap.outputs.update == 'true'
         run: |
