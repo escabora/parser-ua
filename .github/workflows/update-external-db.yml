@@ -38,11 +38,25 @@ jobs:
         run: |
           git lfs install
 
+      - name: Track CSV file with Git LFS
+        if: steps.browscap.outputs.update == 'true'
+        run: |
+          git lfs track "$BROWSCAP_CSV_FILE"
+          git add .gitattributes
+
       - name: Download CSV
         if: steps.browscap.outputs.update == 'true'
         run: |
           curl -s -L -o "$BROWSCAP_CSV_FILE" "$BROWSCAP_CSV_URL"
           echo "${{ steps.browscap.outputs.remote_version }}" > "$BROWSCAP_VERSION_FILE"
+
+      - name: Commit updated CSV
+        if: steps.browscap.outputs.update == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$BROWSCAP_CSV_FILE" "$BROWSCAP_VERSION_FILE" .gitattributes
+          git commit -m "Update BrowsCap CSV to version ${{ steps.browscap.outputs.remote_version }}"
 
       - name: Create Pull Request
         if: steps.browscap.outputs.update == 'true'
@@ -50,7 +64,7 @@ jobs:
         with:
           branch: update-db/browscap
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Update BrowsCap CSV to version ${{ steps.browscap.outputs.remote_version }}"
+          commit: false
           title: Update BrowsCap CSV to version ${{ steps.browscap.outputs.remote_version }}
           body: |
             - Updated to BrowsCap CSV version: ${{ steps.browscap.outputs.remote_version }}
